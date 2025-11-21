@@ -12,7 +12,7 @@ st.set_page_config(page_title="Gal-M@ker", page_icon="🦄", layout="wide")
 try:
     GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 except:
-    GOOGLE_API_KEY = "AIza..."
+    GOOGLE_API_KEY = "AIza..." # ローカル用
 
 if GOOGLE_API_KEY.startswith("AIza"):
     genai.configure(api_key=GOOGLE_API_KEY)
@@ -24,20 +24,33 @@ try:
 except:
     CAN_REMOVE_BG = False
 
-# --- 4. テーマ色 ---
-def get_theme_colors(theme):
-    c = {"bg": "#ffeaf4", "dot": "#ffb6c1", "text": "#ff1493", "border": "#ff69b4", "btn": "linear-gradient(180deg, #ffb6c1, #ff69b4)", "shadow": "#b0e0e6", "img_text": "#ff1493", "img_stroke": "white"}
-    if "強め" in theme:
-        c = {"bg": "#000000", "dot": "#333333", "text": "#FFD700", "border": "#FFD700", "btn": "linear-gradient(180deg, #ffd700, #b8860b)", "shadow": "#ff0000", "img_text": "#FFD700", "img_stroke": "black"}
-    elif "Y2K" in theme:
-        c = {"bg": "#e0ffff", "dot": "#00ffff", "text": "#0000ff", "border": "#0000ff", "btn": "linear-gradient(180deg, #00ffff, #0000ff)", "shadow": "#ff00ff", "img_text": "#00FFFF", "img_stroke": "#000080"}
-    elif "病み" in theme:
-        c = {"bg": "#1a001a", "dot": "#4b0082", "text": "#e6e6fa", "border": "#9370db", "btn": "linear-gradient(180deg, #d8bfd8, #800080)", "shadow": "#000000", "img_text": "#E6E6FA", "img_stroke": "black"}
-    return c
+# --- 4. テーマごとの設定（色＆予備の言葉） ---
+THEME_CONFIG = {
+    "姫ギャル (Pink)": {
+        "colors": {"bg": "#ffeaf4", "dot": "#ffb6c1", "text": "#ff1493", "border": "#ff69b4", "btn": "linear-gradient(180deg, #ffb6c1, #ff69b4)", "shadow": "#b0e0e6", "img_text": "#ff1493", "img_stroke": "white"},
+        "words": ["てんち降臨👼", "優勝した💖", "すきぴ尊い", "あまあま🍬", "ぷりてぃ✨"]
+    },
+    "強めギャル (High)": {
+        "colors": {"bg": "#000000", "dot": "#333333", "text": "#FFD700", "border": "#FFD700", "btn": "linear-gradient(180deg, #ffd700, #b8860b)", "shadow": "#ff0000", "img_text": "#FFD700", "img_stroke": "black"},
+        "words": ["ウチら最強卍", "喧嘩上等🔥", "マブダチ🤝", "治安悪め😎", "レベチ👑"]
+    },
+    "Y2K (Cyber)": {
+        "colors": {"bg": "#e0ffff", "dot": "#00ffff", "text": "#0000ff", "border": "#0000ff", "btn": "linear-gradient(180deg, #00ffff, #0000ff)", "shadow": "#ff00ff", "img_text": "#00FFFF", "img_stroke": "#000080"},
+        "words": ["System OK", "Link Start", "Cyber Angel", "Digital Love", "No Data"]
+    },
+    "病みかわ (Emo)": {
+        "colors": {"bg": "#1a001a", "dot": "#4b0082", "text": "#e6e6fa", "border": "#9370db", "btn": "linear-gradient(180deg, #d8bfd8, #800080)", "shadow": "#000000", "img_text": "#E6E6FA", "img_stroke": "black"},
+        "words": ["永遠...", "愛して†", "救済求ム", "バグり中", "ぴえん🥺"]
+    },
+    "自由入力": {
+        "colors": {"bg": "#ffffff", "dot": "#cccccc", "text": "#333333", "border": "#333333", "btn": "linear-gradient(180deg, #999999, #333333)", "shadow": "#000000", "img_text": "#FF00FF", "img_stroke": "white"},
+        "words": ["最強卍"]
+    }
+}
 
 # --- 5. CSS注入 ---
 def inject_css(theme):
-    c = get_theme_colors(theme)
+    c = THEME_CONFIG[theme]["colors"]
     st.markdown(f"""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&display=swap');
@@ -51,33 +64,28 @@ def inject_css(theme):
     """, unsafe_allow_html=True)
     return c
 
-# --- 6. AI (ここを修正！) ---
+# --- 6. AI (賢い予備機能付き) ---
 def get_gal_caption(image, theme_mode, custom_text):
     if "自由" in theme_mode: return custom_text if custom_text else "最強卍"
 
-    base = "平成ギャル雑誌風のキャッチコピー。10文字以内。"
-    cond = "テンションMAX"
-    if "強め" in theme_mode: cond = "オラオラ系"
-    elif "姫" in theme_mode: cond = "お姫様系"
-    elif "Y2K" in theme_mode: cond = "デジタル"
-    elif "病み" in theme_mode: cond = "意味深"
-
-    # ★作戦変更：いろんなモデルを順番に試す「総当たり作戦」
-    models_to_try = ['gemini-1.5-flash', 'gemini-pro']
+    try:
+        # 安定版のgemini-proを優先で試す
+        model = genai.GenerativeModel('gemini-pro')
+        prompt = f"平成ギャル雑誌風のキャッチコピー。テーマ:{theme_mode}。10文字以内。絵文字は1つまで。"
+        response = model.generate_content([prompt, image])
+        text = response.text.strip()
+        if text: return text
+    except Exception as e:
+        # エラーが起きたら、サイドバーにこっそり表示（デバッグ用）
+        st.sidebar.error(f"AI Error Log: {e}")
     
-    for model_name in models_to_try:
-        try:
-            model = genai.GenerativeModel(model_name)
-            response = model.generate_content([f"{base} 条件: {cond}", image])
-            return response.text.strip()
-        except:
-            continue # ダメなら次へ！
-
-    # 全部ダメだった時の最終手段
-    return "最強KAWAII宣言💖"
+    # ★ここが新機能！AIがダメでも、テーマに合った言葉を選ぶ！
+    fallback_list = THEME_CONFIG[theme_mode]["words"]
+    return random.choice(fallback_list)
 
 # --- 7. 画像加工 ---
-def process_image(image, caption, color_settings):
+def process_image(image, caption, theme_mode):
+    c = THEME_CONFIG[theme_mode]["colors"]
     img = image.convert("RGB")
     img = ImageEnhance.Brightness(img).enhance(1.1)
     w, h = img.size
@@ -108,7 +116,7 @@ def process_image(image, caption, color_settings):
     try: font = ImageFont.truetype("gal_font.ttf", int(w/7))
     except: font = ImageFont.load_default()
     
-    draw.text((w/10, h/1.4), caption, font=font, fill=color_settings['img_text'], stroke_width=6, stroke_fill=color_settings['img_stroke'])
+    draw.text((w/10, h/1.4), caption, font=font, fill=c['img_text'], stroke_width=6, stroke_fill=c['img_stroke'])
     return canvas
 
 # --- UI ---
@@ -118,7 +126,7 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.markdown("### 01. 素材えらび♡")
-    new_theme = st.radio("今日のバイブスは？🌈", ["姫ギャル (Pink)", "強めギャル (High)", "Y2K (Cyber)", "病みかわ (Emo)", "自由入力"], key="rad")
+    new_theme = st.radio("今日のバイブスは？🌈", list(THEME_CONFIG.keys()), key="rad")
     if new_theme != st.session_state.theme:
         st.session_state.theme = new_theme
         st.rerun()
@@ -136,11 +144,12 @@ with col1:
         if st.button("💖 ギャル化スイッチON 💖"):
             with st.spinner("AIが考え中..."):
                 caption = get_gal_caption(image, st.session_state.theme, custom_text)
-                res = process_image(image, caption, c)
+                res = process_image(image, caption, st.session_state.theme)
                 st.session_state.final = res
                 st.session_state.cap = caption
 
 with col2:
+    c = THEME_CONFIG[st.session_state.theme]["colors"]
     st.markdown(f"""<div class="custom-box"><h1 style="margin:0;font-size:3rem;text-shadow:3px 3px 0 #fff,5px 5px 0 {c['shadow']};">Gal-M@ker</h1><p>{st.session_state.theme} MODE</p></div>""", unsafe_allow_html=True)
     if 'final' in st.session_state:
         st.balloons()
