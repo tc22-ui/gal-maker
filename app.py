@@ -51,36 +51,30 @@ def inject_css(theme):
     """, unsafe_allow_html=True)
     return c
 
-# --- 6. AI (犯人特定モード) ---
+# --- 6. AI (ここを修正！) ---
 def get_gal_caption(image, theme_mode, custom_text):
     if "自由" in theme_mode: return custom_text if custom_text else "最強卍"
 
-    try:
-        # モデルを変えてみる（flashがだめならpro）
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        
-        base = "平成ギャル雑誌風のキャッチコピー。10文字以内。"
-        cond = "テンションMAX"
-        if "強め" in theme_mode: cond = "オラオラ系"
-        elif "姫" in theme_mode: cond = "お姫様系"
-        elif "Y2K" in theme_mode: cond = "デジタル"
-        elif "病み" in theme_mode: cond = "意味深"
+    base = "平成ギャル雑誌風のキャッチコピー。10文字以内。"
+    cond = "テンションMAX"
+    if "強め" in theme_mode: cond = "オラオラ系"
+    elif "姫" in theme_mode: cond = "お姫様系"
+    elif "Y2K" in theme_mode: cond = "デジタル"
+    elif "病み" in theme_mode: cond = "意味深"
 
-        response = model.generate_content([f"{base} 条件: {cond}", image])
-        return response.text.strip()
-        
-    except Exception as e:
-        # ★ここ！エラーの中身をそのまま返す！
-        error_text = str(e)
-        print(f"ERROR: {error_text}")
-        
-        # 長すぎると画像に入らないので短くする
-        if "400" in error_text: return "Error: 400 (Bad Request)"
-        if "403" in error_text: return "Error: 403 (API Key Invalid)"
-        if "429" in error_text: return "Error: 429 (Quota Exceeded)"
-        if "not found" in error_text: return "Error: Model Not Found"
-        
-        return f"Err: {error_text[:20]}" # 謎のエラーなら最初の20文字を出す
+    # ★作戦変更：いろんなモデルを順番に試す「総当たり作戦」
+    models_to_try = ['gemini-1.5-flash', 'gemini-pro']
+    
+    for model_name in models_to_try:
+        try:
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content([f"{base} 条件: {cond}", image])
+            return response.text.strip()
+        except:
+            continue # ダメなら次へ！
+
+    # 全部ダメだった時の最終手段
+    return "最強KAWAII宣言💖"
 
 # --- 7. 画像加工 ---
 def process_image(image, caption, color_settings):
@@ -111,15 +105,10 @@ def process_image(image, caption, color_settings):
                 except: pass
 
     draw = ImageDraw.Draw(canvas)
-    try: font = ImageFont.truetype("gal_font.ttf", int(w/10)) # フォントサイズ調整
+    try: font = ImageFont.truetype("gal_font.ttf", int(w/7))
     except: font = ImageFont.load_default()
     
-    # エラーが見やすいように、エラー時は赤文字にする
-    if "Err" in caption or "Error" in caption:
-        draw.text((w/10, h/1.4), caption, font=font, fill="red", stroke_width=4, stroke_fill="white")
-    else:
-        draw.text((w/10, h/1.4), caption, font=font, fill=color_settings['img_text'], stroke_width=6, stroke_fill=color_settings['img_stroke'])
-        
+    draw.text((w/10, h/1.4), caption, font=font, fill=color_settings['img_text'], stroke_width=6, stroke_fill=color_settings['img_stroke'])
     return canvas
 
 # --- UI ---
@@ -145,7 +134,7 @@ with col1:
         st.image(image, use_container_width=True)
         
         if st.button("💖 ギャル化スイッチON 💖"):
-            with st.spinner("AI診断中..."):
+            with st.spinner("AIが考え中..."):
                 caption = get_gal_caption(image, st.session_state.theme, custom_text)
                 res = process_image(image, caption, c)
                 st.session_state.final = res
@@ -156,7 +145,6 @@ with col2:
     if 'final' in st.session_state:
         st.balloons()
         st.image(st.session_state.final, use_container_width=True)
-        # 診断結果（キャプション）を表示
-        st.info(f"AIの応答: {st.session_state.cap}")
+        st.success(f"テーマ: {st.session_state.cap}")
     else:
         st.info("👈 左側で画像を選んでスイッチON！")
