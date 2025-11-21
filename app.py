@@ -5,29 +5,26 @@ import random
 import google.generativeai as genai
 import time
 
-# --- 設定 ---
+# --- 1. 設定 ---
 st.set_page_config(page_title="Gal-M@ker", page_icon="🦄", layout="wide")
 
-# --- APIキー ---
+# --- 2. APIキー ---
 try:
     GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 except:
     GOOGLE_API_KEY = "AIza..."
 
-# キーの簡易チェック
-if not GOOGLE_API_KEY.startswith("AIza"):
-    st.error("🚨 APIキーが正しくありません。Secretsの設定を確認してください。")
-else:
+if GOOGLE_API_KEY.startswith("AIza"):
     genai.configure(api_key=GOOGLE_API_KEY)
 
-# --- 🚑 エラー回避 ---
+# --- 3. エラー回避 ---
 try:
     from rembg import remove
     CAN_REMOVE_BG = True
 except:
     CAN_REMOVE_BG = False
 
-# --- 🎨 テーマ色 ---
+# --- 4. テーマ色 ---
 def get_theme_colors(theme):
     c = {"bg": "#ffeaf4", "dot": "#ffb6c1", "text": "#ff1493", "border": "#ff69b4", "btn": "linear-gradient(180deg, #ffb6c1, #ff69b4)", "shadow": "#b0e0e6", "img_text": "#ff1493", "img_stroke": "white"}
     if "強め" in theme:
@@ -38,7 +35,7 @@ def get_theme_colors(theme):
         c = {"bg": "#1a001a", "dot": "#4b0082", "text": "#e6e6fa", "border": "#9370db", "btn": "linear-gradient(180deg, #d8bfd8, #800080)", "shadow": "#000000", "img_text": "#E6E6FA", "img_stroke": "black"}
     return c
 
-# --- CSS注入 ---
+# --- 5. CSS注入 ---
 def inject_css(theme):
     c = get_theme_colors(theme)
     st.markdown(f"""
@@ -54,43 +51,44 @@ def inject_css(theme):
     """, unsafe_allow_html=True)
     return c
 
-# --- AI (デバッグ仕様) ---
+# --- 6. AI (犯人特定モード) ---
 def get_gal_caption(image, theme_mode, custom_text):
     if "自由" in theme_mode: return custom_text if custom_text else "最強卍"
 
     try:
-        # 最新モデルを指定
+        # モデルを変えてみる（flashがだめならpro）
         model = genai.GenerativeModel('gemini-1.5-flash')
         
-        style = "テンションMAX"
-        if "強め" in theme_mode: style = "オラオラ系、強気"
-        elif "姫" in theme_mode: style = "お姫様系、甘々"
-        elif "Y2K" in theme_mode: style = "デジタル、近未来"
-        elif "病み" in theme_mode: style = "意味深、ダーク"
+        base = "平成ギャル雑誌風のキャッチコピー。10文字以内。"
+        cond = "テンションMAX"
+        if "強め" in theme_mode: cond = "オラオラ系"
+        elif "姫" in theme_mode: cond = "お姫様系"
+        elif "Y2K" in theme_mode: cond = "デジタル"
+        elif "病み" in theme_mode: cond = "意味深"
 
-        prompt = f"平成ギャル雑誌風のキャッチコピー。テーマ:{style}。10文字以内。"
-        response = model.generate_content([prompt, image])
+        response = model.generate_content([f"{base} 条件: {cond}", image])
         return response.text.strip()
         
     except Exception as e:
-        # ★ここ重要：エラー内容を画面に出す！
-        error_msg = str(e)
-        st.error(f"AIエラー詳細: {error_msg}") # 画面上部に赤く出す
+        # ★ここ！エラーの中身をそのまま返す！
+        error_text = str(e)
+        print(f"ERROR: {error_text}")
         
-        # エラーの種類によってメッセージを変える
-        if "400" in error_msg: return "無効なキーかも"
-        if "403" in error_msg: return "場所/権限エラー"
-        if "429" in error_msg: return "使いすぎ！"
-        return "AI故障中"
+        # 長すぎると画像に入らないので短くする
+        if "400" in error_text: return "Error: 400 (Bad Request)"
+        if "403" in error_text: return "Error: 403 (API Key Invalid)"
+        if "429" in error_text: return "Error: 429 (Quota Exceeded)"
+        if "not found" in error_text: return "Error: Model Not Found"
+        
+        return f"Err: {error_text[:20]}" # 謎のエラーなら最初の20文字を出す
 
-# --- 画像加工 ---
+# --- 7. 画像加工 ---
 def process_image(image, caption, color_settings):
     img = image.convert("RGB")
     img = ImageEnhance.Brightness(img).enhance(1.1)
     w, h = img.size
     canvas = Image.new("RGBA", (w, h), (255, 255, 255, 0))
     
-    # 背景
     try:
         if CAN_REMOVE_BG and os.path.exists("assets/bgs"):
             fg = remove(img).convert("RGBA")
@@ -102,7 +100,6 @@ def process_image(image, caption, color_settings):
         else: canvas.paste(img.convert("RGBA"), (0,0))
     except: canvas.paste(img.convert("RGBA"), (0,0))
 
-    # スタンプ
     if os.path.exists("assets/stamps"):
         stamps = [f for f in os.listdir("assets/stamps") if not f.startswith('.')]
         if stamps:
@@ -113,11 +110,16 @@ def process_image(image, caption, color_settings):
                     canvas.paste(s.resize((sz, sz)), (random.randint(0, w-sz), random.randint(0, h-sz)), s.resize((sz, sz)))
                 except: pass
 
-    # 文字
     draw = ImageDraw.Draw(canvas)
-    try: font = ImageFont.truetype("gal_font.ttf", int(w/7))
+    try: font = ImageFont.truetype("gal_font.ttf", int(w/10)) # フォントサイズ調整
     except: font = ImageFont.load_default()
-    draw.text((w/10, h/1.4), caption, font=font, fill=color_settings['img_text'], stroke_width=6, stroke_fill=color_settings['img_stroke'])
+    
+    # エラーが見やすいように、エラー時は赤文字にする
+    if "Err" in caption or "Error" in caption:
+        draw.text((w/10, h/1.4), caption, font=font, fill="red", stroke_width=4, stroke_fill="white")
+    else:
+        draw.text((w/10, h/1.4), caption, font=font, fill=color_settings['img_text'], stroke_width=6, stroke_fill=color_settings['img_stroke'])
+        
     return canvas
 
 # --- UI ---
@@ -143,7 +145,7 @@ with col1:
         st.image(image, use_container_width=True)
         
         if st.button("💖 ギャル化スイッチON 💖"):
-            with st.spinner("AI通信中..."):
+            with st.spinner("AI診断中..."):
                 caption = get_gal_caption(image, st.session_state.theme, custom_text)
                 res = process_image(image, caption, c)
                 st.session_state.final = res
@@ -154,6 +156,7 @@ with col2:
     if 'final' in st.session_state:
         st.balloons()
         st.image(st.session_state.final, use_container_width=True)
-        st.success(f"テーマ: {st.session_state.cap}")
+        # 診断結果（キャプション）を表示
+        st.info(f"AIの応答: {st.session_state.cap}")
     else:
         st.info("👈 左側で画像を選んでスイッチON！")
