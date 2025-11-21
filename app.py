@@ -6,13 +6,13 @@ import google.generativeai as genai
 import time
 
 # --- 1. 設定 ---
-st.set_page_config(page_title="Gal-M@ker", page_icon="🦄", layout="wide")
+st.set_page_config(page_title="Gal-M@ker", page_icon="🌺", layout="wide")
 
 # --- 2. APIキー ---
 try:
     GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 except:
-    GOOGLE_API_KEY = "AIza..." # ローカル用
+    GOOGLE_API_KEY = "AIza..."
 
 if GOOGLE_API_KEY.startswith("AIza"):
     genai.configure(api_key=GOOGLE_API_KEY)
@@ -24,70 +24,152 @@ try:
 except:
     CAN_REMOVE_BG = False
 
-# --- 4. テーマごとの設定（色＆予備の言葉） ---
+# --- 4. テーマ定義 (デザイン・言葉) ---
 THEME_CONFIG = {
     "姫ギャル (Pink)": {
-        "colors": {"bg": "#ffeaf4", "dot": "#ffb6c1", "text": "#ff1493", "border": "#ff69b4", "btn": "linear-gradient(180deg, #ffb6c1, #ff69b4)", "shadow": "#b0e0e6", "img_text": "#ff1493", "img_stroke": "white"},
-        "words": ["てんち降臨👼", "優勝した💖", "すきぴ尊い", "あまあま🍬", "ぷりてぃ✨"]
+        "colors": {"bg_base": "#fff0f5", "dot": "#ff69b4", "text": "#ff1493", "border": "#ff69b4", "shadow": "#ffb6c1"},
+        "words": ["てんち降臨👼", "優勝した💖", "すきぴ尊い", "あまあま🍬", "ぷりてぃ✨"],
+        "loading": ["リボン結び中...", "王子様待ち...", "魔法かけてる...", "キラキラ注入✨"]
     },
     "強めギャル (High)": {
-        "colors": {"bg": "#000000", "dot": "#333333", "text": "#FFD700", "border": "#FFD700", "btn": "linear-gradient(180deg, #ffd700, #b8860b)", "shadow": "#ff0000", "img_text": "#FFD700", "img_stroke": "black"},
-        "words": ["ウチら最強卍", "喧嘩上等🔥", "マブダチ🤝", "治安悪め😎", "レベチ👑"]
+        "colors": {"bg_base": "#000000", "dot": "#333333", "text": "#FFD700", "border": "#FFD700", "shadow": "#FF0000"},
+        "words": ["ウチら最強卍", "喧嘩上等🔥", "マブダチ🤝", "治安悪め😎", "レベチ👑"],
+        "loading": ["気合い入れ中🔥", "盛れるまで帰らん", "治安悪化中...", "最強バイブス⚡️"]
     },
     "Y2K (Cyber)": {
-        "colors": {"bg": "#e0ffff", "dot": "#00ffff", "text": "#0000ff", "border": "#0000ff", "btn": "linear-gradient(180deg, #00ffff, #0000ff)", "shadow": "#ff00ff", "img_text": "#00FFFF", "img_stroke": "#000080"},
-        "words": ["System OK", "Link Start", "Cyber Angel", "Digital Love", "No Data"]
+        "colors": {"bg_base": "#e0ffff", "dot": "#0000ff", "text": "#0000ff", "border": "#0000ff", "shadow": "#00ffff"},
+        "words": ["System OK", "Link Start", "Cyber Angel", "Digital Love", "No Data"],
+        "loading": ["Downloading...", "Connect Server...", "Hacking...", "System Boot..."]
     },
     "病みかわ (Emo)": {
-        "colors": {"bg": "#1a001a", "dot": "#4b0082", "text": "#e6e6fa", "border": "#9370db", "btn": "linear-gradient(180deg, #d8bfd8, #800080)", "shadow": "#000000", "img_text": "#E6E6FA", "img_stroke": "black"},
-        "words": ["永遠...", "愛して†", "救済求ム", "バグり中", "ぴえん🥺"]
+        "colors": {"bg_base": "#1a001a", "dot": "#800080", "text": "#e6e6fa", "border": "#9370db", "shadow": "#000000"},
+        "words": ["永遠...", "愛して†", "救済求ム", "バグり中", "ぴえん🥺"],
+        "loading": ["現実逃避中...", "薬飲んだ...", "通信エラー...", "闇の儀式†"]
     },
     "自由入力": {
-        "colors": {"bg": "#ffffff", "dot": "#cccccc", "text": "#333333", "border": "#333333", "btn": "linear-gradient(180deg, #999999, #333333)", "shadow": "#000000", "img_text": "#FF00FF", "img_stroke": "white"},
-        "words": ["最強卍"]
+        "colors": {"bg_base": "#ffffff", "dot": "#cccccc", "text": "#333333", "border": "#333333", "shadow": "#000000"},
+        "words": ["最強卍"],
+        "loading": ["Now Loading...", "Please Wait...", "Processing...", "Almost Done..."]
     }
 }
 
-# --- 5. CSS注入 ---
+# --- 5. CSS注入 (デザインの魂) ---
 def inject_css(theme):
     c = THEME_CONFIG[theme]["colors"]
     st.markdown(f"""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&display=swap');
         html, body, [class*="css"] {{ font-family: 'Mochiy Pop One', sans-serif !important; }}
-        [data-testid="stAppViewContainer"] {{ background-color: {c['bg']} !important; background-image: radial-gradient({c['dot']} 20%, transparent 20%), radial-gradient({c['dot']} 20%, transparent 20%) !important; background-size: 20px 20px !important; }}
-        h1, h2, h3, p, span, div, label {{ color: {c['text']} !important; }}
-        .stButton > button {{ background: {c['btn']} !important; color: white !important; border: 3px solid #fff !important; border-radius: 50px !important; box-shadow: 0 5px 10px {c['text']}66 !important; }}
-        h1 {{ text-shadow: 3px 3px 0px #fff, 5px 5px 0px {c['shadow']} !important; }}
-        .custom-box {{ border: 4px dotted {c['border']}; background: rgba(255,255,255,0.7); border-radius: 30px; padding: 20px; margin-bottom: 20px; }}
+        
+        /* 背景: ドット柄にして動かす */
+        [data-testid="stAppViewContainer"] {{
+            background-color: {c['bg_base']} !important;
+            background-image: radial-gradient({c['dot']} 20%, transparent 20%), radial-gradient({c['dot']} 20%, transparent 20%) !important;
+            background-size: 20px 20px !important;
+            background-position: 0 0, 10px 10px !important;
+        }}
+        
+        /* 文字色 */
+        h1, h2, h3, p, div, label, span {{ color: {c['text']} !important; }}
+        
+        /* タイトル装飾 */
+        h1 {{
+            text-shadow: 3px 3px 0px #fff, 5px 5px 0px {c['shadow']} !important;
+            transform: rotate(-2deg);
+        }}
+        
+        /* ボタン: ゼリーみたいな質感 */
+        .stButton > button {{
+            background: linear-gradient(180deg, rgba(255,255,255,0.4), rgba(0,0,0,0.1)) !important;
+            background-color: {c['border']} !important;
+            color: white !important;
+            border: 3px solid #fff !important;
+            border-radius: 50px !important;
+            box-shadow: 0 5px 15px {c['shadow']} !important;
+            font-size: 1.2rem !important;
+            transition: transform 0.1s;
+        }}
+        .stButton > button:active {{ transform: scale(0.95); }}
+
+        /* コンテナ枠 */
+        .custom-box {{
+            border: 4px dotted {c['border']};
+            background: rgba(255,255,255,0.8);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 5px 5px 0px {c['shadow']};
+        }}
+        
+        /* 画面上部のマーキー（流れる文字） */
+        .marquee-container {{
+            position: fixed; top: 0; left: 0; width: 100%; background: {c['text']}; color: white;
+            z-index: 9999; overflow: hidden; white-space: nowrap; padding: 5px 0; font-size: 14px;
+        }}
+        .marquee-content {{ display: inline-block; animation: marquee 15s linear infinite; }}
+        @keyframes marquee {{ 0% {{ transform: translateX(100%); }} 100% {{ transform: translateX(-100%); }} }}
+        
+        /* 固定デコパーツ */
+        .deco-tl {{ position: fixed; top: 50px; left: 10px; font-size: 40px; z-index: 1; animation: float 3s infinite; }}
+        .deco-tr {{ position: fixed; top: 50px; right: 10px; font-size: 40px; z-index: 1; animation: float 3s infinite reverse; }}
+        @keyframes float {{ 0%, 100% {{ transform: translateY(0); }} 50% {{ transform: translateY(-10px); }} }}
+        
+        /* ローディングオーバーレイ (ゲーミング発光) */
+        @keyframes rainbow {{
+            0% {{ background-color: #ff9a9e; }} 25% {{ background-color: #fad0c4; }}
+            50% {{ background-color: #ffd1ff; }} 75% {{ background-color: #a18cd1; }}
+            100% {{ background-color: #ff9a9e; }}
+        }}
+        .gal-loading {{
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 999999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            animation: rainbow 2s linear infinite;
+        }}
+        .gal-loading-text {{
+            font-size: 3rem; font-weight: 900; color: white;
+            text-shadow: 4px 4px 0 #000;
+            animation: shake 0.5s infinite;
+        }}
+        @keyframes shake {{ 0% {{ transform: rotate(0deg); }} 25% {{ transform: rotate(5deg); }} 75% {{ transform: rotate(-5deg); }} 100% {{ transform: rotate(0deg); }} }}
+
     </style>
     """, unsafe_allow_html=True)
-    return c
+    
+    # マーキーを表示
+    st.markdown(f"""
+    <div class="marquee-container">
+        <div class="marquee-content">
+            Welcome to Gal-M@ker ... Powered by Love Loop Inc ... HEISEI RETRO STYLE ... Make it KAWAII ... {theme} MODE ... 🌺🦋💖
+        </div>
+    </div>
+    <div class="deco-tl">🌺</div>
+    <div class="deco-tr">🦋</div>
+    """, unsafe_allow_html=True)
 
-# --- 6. AI (賢い予備機能付き) ---
+# --- 6. AI ---
 def get_gal_caption(image, theme_mode, custom_text):
     if "自由" in theme_mode: return custom_text if custom_text else "最強卍"
-
     try:
-        # 安定版のgemini-proを優先で試す
-        model = genai.GenerativeModel('gemini-pro')
-        prompt = f"平成ギャル雑誌風のキャッチコピー。テーマ:{theme_mode}。10文字以内。絵文字は1つまで。"
-        response = model.generate_content([prompt, image])
-        text = response.text.strip()
-        if text: return text
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        base = "平成ギャル雑誌風のキャッチコピー。10文字以内。"
+        cond = "テンションMAX"
+        if "強め" in theme_mode: cond = "オラオラ系"
+        elif "姫" in theme_mode: cond = "お姫様系"
+        elif "Y2K" in theme_mode: cond = "デジタル"
+        elif "病み" in theme_mode: cond = "意味深"
+        
+        response = model.generate_content([f"{base} 条件: {cond}", image])
+        return response.text.strip()
     except Exception as e:
-        # エラーが起きたら、サイドバーにこっそり表示（デバッグ用）
-        st.sidebar.error(f"AI Error Log: {e}")
-    
-    # ★ここが新機能！AIがダメでも、テーマに合った言葉を選ぶ！
-    fallback_list = THEME_CONFIG[theme_mode]["words"]
-    return random.choice(fallback_list)
+        st.sidebar.error(f"AI Error: {e}")
+        return random.choice(THEME_CONFIG[theme_mode]["words"])
 
 # --- 7. 画像加工 ---
 def process_image(image, caption, theme_mode):
     c = THEME_CONFIG[theme_mode]["colors"]
     img = image.convert("RGB")
-    img = ImageEnhance.Brightness(img).enhance(1.1)
+    img = ImageEnhance.Brightness(img).enhance(1.15) # 美白
     w, h = img.size
     canvas = Image.new("RGBA", (w, h), (255, 255, 255, 0))
     
@@ -116,7 +198,12 @@ def process_image(image, caption, theme_mode):
     try: font = ImageFont.truetype("gal_font.ttf", int(w/7))
     except: font = ImageFont.load_default()
     
-    draw.text((w/10, h/1.4), caption, font=font, fill=c['img_text'], stroke_width=6, stroke_fill=c['img_stroke'])
+    # 文字色（テーマ依存）
+    tc = c['text']; sc = c['bg_base'] # 縁取りは背景色にすると馴染む
+    if "強め" in theme_mode: tc="#FFD700"; sc="black"
+    elif "Y2K" in theme_mode: tc="#00FFFF"; sc="#000080"
+    
+    draw.text((w/10, h/1.4), caption, font=font, fill=tc, stroke_width=6, stroke_fill=sc)
     return canvas
 
 # --- UI ---
@@ -131,7 +218,7 @@ with col1:
         st.session_state.theme = new_theme
         st.rerun()
 
-    c = inject_css(st.session_state.theme)
+    inject_css(st.session_state.theme)
     
     custom_text = ""
     if "自由" in st.session_state.theme: custom_text = st.text_input("文字入力", "ウチら最強")
@@ -142,15 +229,37 @@ with col1:
         st.image(image, use_container_width=True)
         
         if st.button("💖 ギャル化スイッチON 💖"):
-            with st.spinner("AIが考え中..."):
-                caption = get_gal_caption(image, st.session_state.theme, custom_text)
-                res = process_image(image, caption, st.session_state.theme)
-                st.session_state.final = res
-                st.session_state.cap = caption
+            # ★ここが新しい！「動くローディング画面」★
+            loading_ph = st.empty()
+            loading_messages = THEME_CONFIG[st.session_state.theme]["loading"]
+            
+            # 3回メッセージを変える演出（ワクワク感！）
+            for msg in loading_messages[:3]:
+                loading_ph.markdown(f"""
+                <div class="gal-loading">
+                    <div class="gal-loading-text">{msg}</div>
+                    <div style="font-size:20px; color:white; margin-top:10px;">Wait a sec...</div>
+                </div>
+                """, unsafe_allow_html=True)
+                time.sleep(0.8) # 0.8秒ごとに切り替え
+            
+            # 処理実行
+            caption = get_gal_caption(image, st.session_state.theme, custom_text)
+            res = process_image(image, caption, st.session_state.theme)
+            
+            loading_ph.empty() # 演出終了
+            st.session_state.final = res
+            st.session_state.cap = caption
 
 with col2:
     c = THEME_CONFIG[st.session_state.theme]["colors"]
-    st.markdown(f"""<div class="custom-box"><h1 style="margin:0;font-size:3rem;text-shadow:3px 3px 0 #fff,5px 5px 0 {c['shadow']};">Gal-M@ker</h1><p>{st.session_state.theme} MODE</p></div>""", unsafe_allow_html=True)
+    st.markdown(f"""
+    <div class="custom-box">
+        <h1 style="margin:0;font-size:3rem;">Gal-M@ker</h1>
+        <p>{st.session_state.theme} MODE</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
     if 'final' in st.session_state:
         st.balloons()
         st.image(st.session_state.final, use_container_width=True)
