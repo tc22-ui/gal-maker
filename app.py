@@ -25,14 +25,14 @@ try:
 except:
     CAN_REMOVE_BG = False
 
-# --- 4. テーマ定義 (色を「パステル＋白フチ」に変更！) ---
+# --- 4. テーマ定義 ---
 THEME_CONFIG = {
     "姫ギャル (Pink)": {
         "colors": {
             "bg_base": "#fff0f5", "dot": "#ffb6c1",
-            "text": "#ff69b4", "outline": "#ffffff", # ピンク文字 × 白フチ
+            "text": "#ff69b4", "outline": "#ffffff",
             "border": "#ff69b4", "shadow": "#ff1493",
-            "gloss_alpha": 120 # ツヤの強さ
+            "gloss_alpha": 120
         },
         "words": ["姫降臨", "お城に帰宅♡", "全世界一番可愛", "人形同盟", "王子様どこ？", "LOVE♡"],
         "loading": ["全人類、私に跪け！\nプリンセス・レボリューション！", "鏡よ鏡、今この瞬間だけは魔法をかけて♡\nラブリー・オーバーロード！", "可愛さは正義、ダサさは有罪！\n執行対象、発見♡"]
@@ -40,7 +40,7 @@ THEME_CONFIG = {
     "強めギャル (High)": {
         "colors": {
             "bg_base": "#000000", "dot": "#333333",
-            "text": "#FFD700", "outline": "#000000", # 金文字 × 黒フチ（これだけは黒！）
+            "text": "#FFD700", "outline": "#000000",
             "border": "#FFD700", "shadow": "#FF0000",
             "gloss_alpha": 100
         },
@@ -50,7 +50,7 @@ THEME_CONFIG = {
     "Y2K (Cyber)": {
         "colors": {
             "bg_base": "#e0ffff", "dot": "#0000ff",
-            "text": "#00bfff", "outline": "#ffffff", # 水色文字 × 白フチ
+            "text": "#00bfff", "outline": "#ffffff",
             "border": "#0000ff", "shadow": "#00ffff",
             "gloss_alpha": 140
         },
@@ -60,7 +60,7 @@ THEME_CONFIG = {
     "病みかわ (Emo)": {
         "colors": {
             "bg_base": "#1a001a", "dot": "#800080",
-            "text": "#d8bfd8", "outline": "#ffffff", # 薄紫文字 × 白フチ
+            "text": "#d8bfd8", "outline": "#ffffff",
             "border": "#9370db", "shadow": "#d8bfd8",
             "gloss_alpha": 100
         },
@@ -70,7 +70,7 @@ THEME_CONFIG = {
     "自由入力": {
         "colors": {
             "bg_base": "#ffffff", "dot": "#cccccc",
-            "text": "#ff00ff", "outline": "#ffffff", # 蛍光ピンク × 白フチ
+            "text": "#ff00ff", "outline": "#ffffff",
             "border": "#333333", "shadow": "#000000",
             "gloss_alpha": 120
         },
@@ -79,7 +79,7 @@ THEME_CONFIG = {
     }
 }
 
-# --- 5. CSS注入 ---
+# --- 5. CSS注入 (★ここにジェル文字CSSを追加！★) ---
 def inject_css(theme):
     c = THEME_CONFIG[theme]["colors"]
     deco_color = c['border'].replace("#", "%23")
@@ -99,12 +99,26 @@ def inject_css(theme):
         [data-testid="stAppViewContainer"]::before {{ content: ""; position: fixed; top: 50px; left: 10px; width: 100px; height: 100px; background-image: {star_svg}; background-repeat: no-repeat; opacity: 0.6; pointer-events: none; }}
         [data-testid="stAppViewContainer"]::after {{ content: ""; position: fixed; bottom: 50px; right: 10px; width: 100px; height: 100px; background-image: {star_svg}; background-repeat: no-repeat; transform: rotate(20deg); opacity: 0.6; pointer-events: none; }}
         
-        h1, h2, h3, p, div, label, span, [data-testid="stMarkdownContainer"] p {{
+        /* ↓↓↓ ここを変更！UIの文字をジェル化 ↓↓↓ */
+        h1, h2, h3, p, div, label, span, [data-testid="stMarkdownContainer"] p, .stRadio label p {{
             color: {c['text']} !important;
-            /* ぷるぷる白フチCSS */
-            text-shadow: 2px 2px 0 {outline}, -2px -2px 0 {outline}, -2px 2px 0 {outline}, 2px -2px 0 {outline}, 4px 4px 0px {c['shadow']} !important;
-            letter-spacing: 1px; font-weight: 900 !important;
+            font-weight: 900 !important;
+            letter-spacing: 1px;
+            /* ぷるぷるジェル文字CSS */
+            text-shadow:
+                /* 太い白フチ */
+                2.5px 2.5px 0 {outline}, -2.5px -2.5px 0 {outline},
+                -2.5px 2.5px 0 {outline}, 2.5px -2.5px 0 {outline},
+                /* フチの丸み */
+                0 2.5px 0 {outline}, 0 -2.5px 0 {outline},
+                2.5px 0 0 {outline}, -2.5px 0 0 {outline},
+                /* 内側の発光感 */
+                0 0 8px {c['shadow']},
+                /* 外側の影で立体感 */
+                4px 4px 2px rgba(0,0,0,0.2) !important;
         }}
+        /* ↑↑↑ ここまで ↑↑↑ */
+
         h1 {{ font-size: 3.5rem !important; transform: rotate(-3deg); margin-bottom: 20px !important; }}
         .stRadio label p {{ font-size: 1.2rem !important; }}
         .custom-box {{ border: 3px dashed {c['border']}; background: rgba(255,255,255,0.95); border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 8px 8px 0px rgba(0,0,0,0.1); }}
@@ -124,7 +138,10 @@ def inject_css(theme):
         }}
         .gal-loading-text {{
             font-family: 'Potta One', sans-serif; font-size: 2rem; line-height: 1.5; font-weight: 900;
-            color: #fff !important; text-shadow: 0 0 10px {c['text']}, 0 0 20px {c['text']} !important;
+            color: #fff !important; text-shadow:
+                2px 2px 0 {c['text']}, -2px -2px 0 {c['text']},
+                -2px 2px 0 {c['text']}, 2px -2px 0 {c['text']},
+                0 0 15px {c['shadow']} !important;
             animation: flash 0.5s infinite; white-space: pre-wrap;
         }}
     </style>
@@ -142,40 +159,24 @@ def get_gal_caption(image, theme_mode, custom_text):
         return response.text.strip()
     except: return random.choice(THEME_CONFIG[theme_mode]["words"])
 
-# --- 7. 画像加工 (★ぷるぷるジェル文字実装★) ---
+# --- 7. 画像加工 (ぷるぷるジェル文字) ---
 def draw_gel_text(canvas, text, font, x, y, text_color, outline_color, gloss_alpha):
     draw = ImageDraw.Draw(canvas)
-    
-    # 1. 太いフチ (Outline)
-    # 少しずつずらして描くことで、より太く丸いフチを作る
+    # 1. 太いフチ
     stroke_w = 8
     draw.text((x, y), text, font=font, fill=outline_color, stroke_width=stroke_w, stroke_fill=outline_color)
-    
-    # 2. 本体 (Main Body)
+    # 2. 本体
     draw.text((x, y), text, font=font, fill=text_color)
-    
-    # 3. ツヤ (Gloss Highlight)
-    # これが「ぷるぷる」の正体！文字の上半分に白い半透明を乗せる
-    
-    # 文字のサイズを取得
+    # 3. ツヤ
     bbox = draw.textbbox((x, y), text, font=font)
-    w = bbox[2] - bbox[0]
     h = bbox[3] - bbox[1]
-    
-    # 文字の形のマスクを作る
     mask = Image.new('L', canvas.size, 0)
     d_mask = ImageDraw.Draw(mask)
     d_mask.text((x, y), text, font=font, fill=255)
-    
-    # ツヤ用の白いレイヤーを作る
     gloss = Image.new('RGBA', canvas.size, (255, 255, 255, 0))
     d_gloss = ImageDraw.Draw(gloss)
-    
-    # 上半分だけ白く塗る（少し楕円っぽく）
-    gloss_h = int(h * 0.45) # 上45%
+    gloss_h = int(h * 0.45)
     d_gloss.rectangle([bbox[0], bbox[1] + 5, bbox[2], bbox[1] + gloss_h], fill=(255, 255, 255, gloss_alpha))
-    
-    # マスクを使って文字の部分だけツヤを残す
     canvas.paste(gloss, (0,0), mask)
 
 def process_image(image, caption, theme_mode):
@@ -224,7 +225,7 @@ def process_image(image, caption, theme_mode):
     bx, by = random.choice(positions)
     fx, fy = max(margin, min(bx, w - text_w - margin)), max(margin, min(by, h - text_h - margin))
 
-    # ★新機能：ジェル文字を描画！★
+    # ジェル文字描画
     draw_gel_text(canvas, caption, font, fx, fy, c['text'], c['outline'], c.get('gloss_alpha', 120))
     
     return canvas
