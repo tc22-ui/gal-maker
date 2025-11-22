@@ -25,14 +25,14 @@ try:
 except:
     CAN_REMOVE_BG = False
 
-# --- 4. テーマ定義 ---
+# --- 4. テーマ定義 (色をもっと派手に！) ---
 THEME_CONFIG = {
     "姫ギャル (Pink)": {
         "colors": {
-            "bg_base": "#fff0f5", "dot": "#ffb6c1",
-            "text": "#ff69b4", "outline": "#ffffff",
+            "bg_base": "#fff0f5", "dot": "#ff69b4",
+            "text": "#ff69b4", "outline": "#ffffff", # ピンク文字 × 白フチ
             "border": "#ff69b4", "shadow": "#ff1493",
-            "gloss_alpha": 120
+            "img_text": "#FF1493", "img_outline": "#FFFFFF"
         },
         "words": ["姫降臨", "お城に帰宅♡", "全世界一番可愛", "人形同盟", "王子様どこ？", "LOVE♡"],
         "loading": ["全人類、私に跪け！\nプリンセス・レボリューション！", "鏡よ鏡、今この瞬間だけは魔法をかけて♡\nラブリー・オーバーロード！", "可愛さは正義、ダサさは有罪！\n執行対象、発見♡"]
@@ -42,7 +42,7 @@ THEME_CONFIG = {
             "bg_base": "#000000", "dot": "#333333",
             "text": "#FFD700", "outline": "#000000",
             "border": "#FFD700", "shadow": "#FF0000",
-            "gloss_alpha": 100
+            "img_text": "#FFD700", "img_outline": "#000000" # 金文字 × 黒フチ
         },
         "words": ["我等友情永久不滅", "喧嘩上等", "治安悪め", "卍最強卍", "鬼盛れ注意", "全国制覇"],
         "loading": ["気合注入、根性全開！\n地元最強の底力、見せたんで！", "売られた喧嘩は高値で買うよ？\nゴールデン・ナックル！", "黒肌はダイヤモンドの輝き！\n闇を切り裂くギャル魂！"]
@@ -52,7 +52,7 @@ THEME_CONFIG = {
             "bg_base": "#e0ffff", "dot": "#0000ff",
             "text": "#00bfff", "outline": "#ffffff",
             "border": "#0000ff", "shadow": "#00ffff",
-            "gloss_alpha": 140
+            "img_text": "#00FFFF", "img_outline": "#000080" # 水色文字 × 紺フチ
         },
         "words": ["ズッ友だよ！！", "激アツ🔥", "運命共同体", "あげぽよ⤴︎", "LOVExxx", "バリ3📡"],
         "loading": ["バリ3、激盛れ、バイブスMAX！\n届いて、私のテレパシー！", "過去も未来もウチらのもん！\nミレニアム・パラパラ・ダンス！", "デコ電チャージ、ストラップ装着！\n繋がれ、運命のチェーン！"]
@@ -62,7 +62,7 @@ THEME_CONFIG = {
             "bg_base": "#1a001a", "dot": "#800080",
             "text": "#d8bfd8", "outline": "#ffffff",
             "border": "#9370db", "shadow": "#d8bfd8",
-            "gloss_alpha": 100
+            "img_text": "#E6E6FA", "img_outline": "#000000" # 薄紫文字 × 黒フチ
         },
         "words": ["虚無", "生きるの辛", "顔面国宝", "依存先→", "†昇天†", "鬱..."],
         "loading": ["現実なんていらない…\n夢の世界へ、オーバードーズ・マジック", "私の痛み、あなたにもあげる。\nジェラシー・インジェクション！", "愛してくれなきゃ呪っちゃうよ？\n束縛のレッド・リボン！"]
@@ -72,14 +72,14 @@ THEME_CONFIG = {
             "bg_base": "#ffffff", "dot": "#cccccc",
             "text": "#ff00ff", "outline": "#ffffff",
             "border": "#333333", "shadow": "#000000",
-            "gloss_alpha": 120
+            "img_text": "#FF00FF", "img_outline": "#FFFFFF"
         },
         "words": ["最強卍"],
         "loading": ["Now Loading...", "Please Wait...", "Processing..."]
     }
 }
 
-# --- 5. CSS注入 (★ここにジェル文字CSSを追加！★) ---
+# --- 5. CSS注入 ---
 def inject_css(theme):
     c = THEME_CONFIG[theme]["colors"]
     deco_color = c['border'].replace("#", "%23")
@@ -99,26 +99,11 @@ def inject_css(theme):
         [data-testid="stAppViewContainer"]::before {{ content: ""; position: fixed; top: 50px; left: 10px; width: 100px; height: 100px; background-image: {star_svg}; background-repeat: no-repeat; opacity: 0.6; pointer-events: none; }}
         [data-testid="stAppViewContainer"]::after {{ content: ""; position: fixed; bottom: 50px; right: 10px; width: 100px; height: 100px; background-image: {star_svg}; background-repeat: no-repeat; transform: rotate(20deg); opacity: 0.6; pointer-events: none; }}
         
-        /* ↓↓↓ ここを変更！UIの文字をジェル化 ↓↓↓ */
-        h1, h2, h3, p, div, label, span, [data-testid="stMarkdownContainer"] p, .stRadio label p {{
+        h1, h2, h3, p, div, label, span, [data-testid="stMarkdownContainer"] p {{
             color: {c['text']} !important;
-            font-weight: 900 !important;
-            letter-spacing: 1px;
-            /* ぷるぷるジェル文字CSS */
-            text-shadow:
-                /* 太い白フチ */
-                2.5px 2.5px 0 {outline}, -2.5px -2.5px 0 {outline},
-                -2.5px 2.5px 0 {outline}, 2.5px -2.5px 0 {outline},
-                /* フチの丸み */
-                0 2.5px 0 {outline}, 0 -2.5px 0 {outline},
-                2.5px 0 0 {outline}, -2.5px 0 0 {outline},
-                /* 内側の発光感 */
-                0 0 8px {c['shadow']},
-                /* 外側の影で立体感 */
-                4px 4px 2px rgba(0,0,0,0.2) !important;
+            text-shadow: 2.5px 2.5px 0 {outline}, -2.5px -2.5px 0 {outline}, -2.5px 2.5px 0 {outline}, 2.5px -2.5px 0 {outline}, 4px 4px 0px {c['shadow']} !important;
+            letter-spacing: 1px; font-weight: 900 !important;
         }}
-        /* ↑↑↑ ここまで ↑↑↑ */
-
         h1 {{ font-size: 3.5rem !important; transform: rotate(-3deg); margin-bottom: 20px !important; }}
         .stRadio label p {{ font-size: 1.2rem !important; }}
         .custom-box {{ border: 3px dashed {c['border']}; background: rgba(255,255,255,0.95); border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 8px 8px 0px rgba(0,0,0,0.1); }}
@@ -132,18 +117,8 @@ def inject_css(theme):
         .marquee-content {{ display: inline-block; animation: marquee 15s linear infinite; color: white !important; text-shadow: 2px 2px 0 #000 !important; font-weight: bold; }}
         @keyframes marquee {{ 0% {{ transform: translateX(100%); }} 100% {{ transform: translateX(-100%); }} }}
         @keyframes flash {{ 0% {{ opacity: 1; }} 50% {{ opacity: 0.5; }} 100% {{ opacity: 1; }} }}
-        .gal-loading {{
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 999999;
-            background-color: rgba(0,0,0,0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; text-align: center;
-        }}
-        .gal-loading-text {{
-            font-family: 'Potta One', sans-serif; font-size: 2rem; line-height: 1.5; font-weight: 900;
-            color: #fff !important; text-shadow:
-                2px 2px 0 {c['text']}, -2px -2px 0 {c['text']},
-                -2px 2px 0 {c['text']}, 2px -2px 0 {c['text']},
-                0 0 15px {c['shadow']} !important;
-            animation: flash 0.5s infinite; white-space: pre-wrap;
-        }}
+        .gal-loading {{ position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 999999; background-color: rgba(0,0,0,0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; text-align: center; }}
+        .gal-loading-text {{ font-family: 'Potta One', sans-serif; font-size: 2rem; line-height: 1.5; font-weight: 900; color: #fff !important; text-shadow: 0 0 10px {c['text']}, 0 0 20px {c['text']} !important; animation: flash 0.5s infinite; white-space: pre-wrap; }}
     </style>
     <div class="marquee-container"><div class="marquee-content">Welcome to Gal-M@ker ... Powered by Love Loop Inc ... HEISEI RETRO STYLE ... Make it KAWAII ... {theme} MODE ... 🌺🦋💖</div></div>
     """, unsafe_allow_html=True)
@@ -159,32 +134,49 @@ def get_gal_caption(image, theme_mode, custom_text):
         return response.text.strip()
     except: return random.choice(THEME_CONFIG[theme_mode]["words"])
 
-# --- 7. 画像加工 (ぷるぷるジェル文字) ---
-def draw_gel_text(canvas, text, font, x, y, text_color, outline_color, gloss_alpha):
+# --- 7. 画像加工 (★極太ジェル文字実装★) ---
+def draw_ultra_glossy_text(canvas, text, font, x, y, fill_color, outline_color):
     draw = ImageDraw.Draw(canvas)
-    # 1. 太いフチ
-    stroke_w = 8
-    draw.text((x, y), text, font=font, fill=outline_color, stroke_width=stroke_w, stroke_fill=outline_color)
-    # 2. 本体
-    draw.text((x, y), text, font=font, fill=text_color)
-    # 3. ツヤ
-    bbox = draw.textbbox((x, y), text, font=font)
-    h = bbox[3] - bbox[1]
+    
+    # 1. ドロップシャドウ (影) - ズラして描く
+    shadow_offset = 15
+    draw.text((x + shadow_offset, y + shadow_offset), text, font=font, fill="black") # 半透明の黒とかじゃなくガチ黒で
+
+    # 2. 極太のアウトライン (フチ)
+    # stroke_width を大きくして、さらに重ね塗りして太さを出す
+    outline_width = 15
+    draw.text((x, y), text, font=font, fill=outline_color, stroke_width=outline_width, stroke_fill=outline_color)
+    
+    # 3. 本体 (Main Color)
+    draw.text((x, y), text, font=font, fill=fill_color)
+    
+    # 4. ツヤ (Gloss) - これが命！
+    # 文字の形をしたマスクを作成
     mask = Image.new('L', canvas.size, 0)
     d_mask = ImageDraw.Draw(mask)
     d_mask.text((x, y), text, font=font, fill=255)
-    gloss = Image.new('RGBA', canvas.size, (255, 255, 255, 0))
-    d_gloss = ImageDraw.Draw(gloss)
-    gloss_h = int(h * 0.45)
-    d_gloss.rectangle([bbox[0], bbox[1] + 5, bbox[2], bbox[1] + gloss_h], fill=(255, 255, 255, gloss_alpha))
-    canvas.paste(gloss, (0,0), mask)
+    
+    # 白いハイライトレイヤー
+    highlight = Image.new('RGBA', canvas.size, (255, 255, 255, 0))
+    d_highlight = ImageDraw.Draw(highlight)
+    
+    # テキストのサイズを取得
+    bbox = draw.textbbox((x, y), text, font=font)
+    w_text = bbox[2] - bbox[0]
+    h_text = bbox[3] - bbox[1]
+    
+    # 上半分に強い白を入れる (カプセル型ハイライト)
+    highlight_h = int(h_text * 0.45)
+    d_highlight.rectangle([bbox[0], bbox[1] + 5, bbox[2], bbox[1] + highlight_h], fill=(255, 255, 255, 180)) # 不透明度180で強めに
+    
+    # マスク合成
+    canvas.paste(highlight, (0,0), mask)
 
 def process_image(image, caption, theme_mode):
     c = THEME_CONFIG[theme_mode]["colors"]
     img = image.convert("RGB"); img = ImageEnhance.Brightness(img).enhance(1.15)
     w, h = img.size; canvas = Image.new("RGBA", (w, h), (255, 255, 255, 0))
     
-    # 背景
     try:
         if CAN_REMOVE_BG and os.path.exists("assets/bgs"):
             from rembg import remove; fg = remove(img).convert("RGBA"); bgs = [f for f in os.listdir("assets/bgs") if not f.startswith('.')]
@@ -193,7 +185,6 @@ def process_image(image, caption, theme_mode):
         else: canvas.paste(img.convert("RGBA"), (0,0))
     except: canvas.paste(img.convert("RGBA"), (0,0))
     
-    # スタンプ
     if os.path.exists("assets/stamps"):
         stamps = [f for f in os.listdir("assets/stamps") if not f.startswith('.')]
         if stamps:
@@ -205,28 +196,40 @@ def process_image(image, caption, theme_mode):
                     canvas.paste(s_res, (sx, sy), s_res)
                 except: pass
 
-    # 文字配置計算
     draw = ImageDraw.Draw(canvas)
-    font_size = int(min(w, h) / 8)
-    try: font = ImageFont.truetype("gal_font.ttf", font_size)
+    # ★フォントサイズをデカくする！
+    font_size = int(min(w, h) / 6)
+    
+    # ★フォント読み込み（フォルダ内のttfを探す）
+    font_path = "gal_font.ttf" # デフォルト
+    # assetsフォルダやルートに .ttf があればそれを使う（名前が変わっててもOK）
+    for file in os.listdir("."):
+        if file.endswith(".ttf") or file.endswith(".otf"):
+            font_path = file
+            break
+            
+    try: font = ImageFont.truetype(font_path, font_size)
     except: font = ImageFont.load_default()
 
-    # はみ出し防止
+    # 文字のはみ出し防止計算
     margin = int(min(w, h) * 0.05); max_text_width = w - 2 * margin
     while font_size > 10:
         bbox = draw.textbbox((0, 0), caption, font=font)
         if bbox[2] - bbox[0] <= max_text_width: break
-        font_size -= 2
-        try: font = ImageFont.truetype("gal_font.ttf", font_size)
+        font_size -= 5
+        try: font = ImageFont.truetype(font_path, font_size)
         except: break
 
-    bbox = draw.textbbox((0, 0), caption, font=font); text_w, text_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    bbox = draw.textbbox((0, 0), caption, font=font)
+    text_w, text_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    
+    # ランダム配置
     positions = [(margin, margin), (w-text_w-margin, margin), (margin, h-text_h-margin), (w-text_w-margin, h-text_h-margin), ((w-text_w)/2, h-text_h-margin)]
     bx, by = random.choice(positions)
     fx, fy = max(margin, min(bx, w - text_w - margin)), max(margin, min(by, h - text_h - margin))
 
-    # ジェル文字描画
-    draw_gel_text(canvas, caption, font, fx, fy, c['text'], c['outline'], c.get('gloss_alpha', 120))
+    # ★極太ジェル文字描画★
+    draw_ultra_glossy_text(canvas, caption, font, fx, fy, c['img_text'], c['img_outline'])
     
     return canvas
 
