@@ -1,7 +1,7 @@
 streamlit
-Pillow
 google-generativeai
+Pillow
 rembg
-watchdog
 mediapipe
 numpy
+opencv-python-headless
