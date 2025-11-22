@@ -1,5 +1,5 @@
 import streamlit as st
-from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageFilter
+from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageFilter, ImageOps
 import os
 import random
 import google.generativeai as genai
@@ -18,29 +18,21 @@ except:
 if GOOGLE_API_KEY.startswith("AIza"):
     genai.configure(api_key=GOOGLE_API_KEY)
 
-# --- 3. エラー回避 (ライブラリの生存確認) ---
-# 背景切り抜き
+# --- 3. エラー回避 ---
 try:
     from rembg import remove
     CAN_REMOVE_BG = True
 except:
     CAN_REMOVE_BG = False
 
-# ★顔認識 (ここを修正！なくても動くようにする) ★
-try:
-    import mediapipe as mp
-    CAN_USE_FACE = True
-except ImportError:
-    CAN_USE_FACE = False
-
-# --- 4. テーマ定義 ---
+# --- 4. テーマ定義 (色を「パステル＋白フチ」に変更！) ---
 THEME_CONFIG = {
     "姫ギャル (Pink)": {
         "colors": {
-            "bg_base": "#fff0f5", "dot": "#ff69b4",
-            "text": "#ff69b4", "outline": "#ffffff",
+            "bg_base": "#fff0f5", "dot": "#ffb6c1",
+            "text": "#ff69b4", "outline": "#ffffff", # ピンク文字 × 白フチ
             "border": "#ff69b4", "shadow": "#ff1493",
-            "img_text": "#ff1493", "img_stroke": "white"
+            "gloss_alpha": 120 # ツヤの強さ
         },
         "words": ["姫降臨", "お城に帰宅♡", "全世界一番可愛", "人形同盟", "王子様どこ？", "LOVE♡"],
         "loading": ["全人類、私に跪け！\nプリンセス・レボリューション！", "鏡よ鏡、今この瞬間だけは魔法をかけて♡\nラブリー・オーバーロード！", "可愛さは正義、ダサさは有罪！\n執行対象、発見♡"]
@@ -48,9 +40,9 @@ THEME_CONFIG = {
     "強めギャル (High)": {
         "colors": {
             "bg_base": "#000000", "dot": "#333333",
-            "text": "#FFD700", "outline": "#000000",
+            "text": "#FFD700", "outline": "#000000", # 金文字 × 黒フチ（これだけは黒！）
             "border": "#FFD700", "shadow": "#FF0000",
-            "img_text": "#FFD700", "img_stroke": "black"
+            "gloss_alpha": 100
         },
         "words": ["我等友情永久不滅", "喧嘩上等", "治安悪め", "卍最強卍", "鬼盛れ注意", "全国制覇"],
         "loading": ["気合注入、根性全開！\n地元最強の底力、見せたんで！", "売られた喧嘩は高値で買うよ？\nゴールデン・ナックル！", "黒肌はダイヤモンドの輝き！\n闇を切り裂くギャル魂！"]
@@ -58,9 +50,9 @@ THEME_CONFIG = {
     "Y2K (Cyber)": {
         "colors": {
             "bg_base": "#e0ffff", "dot": "#0000ff",
-            "text": "#0000ff", "outline": "#ffffff",
+            "text": "#00bfff", "outline": "#ffffff", # 水色文字 × 白フチ
             "border": "#0000ff", "shadow": "#00ffff",
-            "img_text": "#00FFFF", "img_stroke": "#000080"
+            "gloss_alpha": 140
         },
         "words": ["ズッ友だよ！！", "激アツ🔥", "運命共同体", "あげぽよ⤴︎", "LOVExxx", "バリ3📡"],
         "loading": ["バリ3、激盛れ、バイブスMAX！\n届いて、私のテレパシー！", "過去も未来もウチらのもん！\nミレニアム・パラパラ・ダンス！", "デコ電チャージ、ストラップ装着！\n繋がれ、運命のチェーン！"]
@@ -68,9 +60,9 @@ THEME_CONFIG = {
     "病みかわ (Emo)": {
         "colors": {
             "bg_base": "#1a001a", "dot": "#800080",
-            "text": "#E6E6FA", "outline": "#4b0082",
+            "text": "#d8bfd8", "outline": "#ffffff", # 薄紫文字 × 白フチ
             "border": "#9370db", "shadow": "#d8bfd8",
-            "img_text": "#E6E6FA", "img_stroke": "black"
+            "gloss_alpha": 100
         },
         "words": ["虚無", "生きるの辛", "顔面国宝", "依存先→", "†昇天†", "鬱..."],
         "loading": ["現実なんていらない…\n夢の世界へ、オーバードーズ・マジック", "私の痛み、あなたにもあげる。\nジェラシー・インジェクション！", "愛してくれなきゃ呪っちゃうよ？\n束縛のレッド・リボン！"]
@@ -78,9 +70,9 @@ THEME_CONFIG = {
     "自由入力": {
         "colors": {
             "bg_base": "#ffffff", "dot": "#cccccc",
-            "text": "#333333", "outline": "#ffffff",
+            "text": "#ff00ff", "outline": "#ffffff", # 蛍光ピンク × 白フチ
             "border": "#333333", "shadow": "#000000",
-            "img_text": "#FF00FF", "img_stroke": "white"
+            "gloss_alpha": 120
         },
         "words": ["最強卍"],
         "loading": ["Now Loading...", "Please Wait...", "Processing..."]
@@ -90,13 +82,15 @@ THEME_CONFIG = {
 # --- 5. CSS注入 ---
 def inject_css(theme):
     c = THEME_CONFIG[theme]["colors"]
-    deco_color = c['deco'].replace("#", "%23") if 'deco' in c else c['border'].replace("#", "%23")
+    deco_color = c['border'].replace("#", "%23")
     star_svg = f"""url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 50 50"><path d="M25 0 L30 18 L50 18 L35 30 L40 50 L25 38 L10 50 L15 30 L0 18 L20 18 Z" fill="none" stroke="{deco_color}" stroke-width="2" stroke-linejoin="round" /></svg>')"""
     outline = c['outline']
+    
     st.markdown(f"""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Potta+One&display=swap');
         html, body, [class*="css"] {{ font-family: 'Potta One', sans-serif !important; }}
+        
         [data-testid="stAppViewContainer"] {{
             background-color: #f8f9fa !important;
             background-image: linear-gradient(to right, rgba(0,0,0,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.05) 1px, transparent 1px) !important;
@@ -104,12 +98,14 @@ def inject_css(theme):
         }}
         [data-testid="stAppViewContainer"]::before {{ content: ""; position: fixed; top: 50px; left: 10px; width: 100px; height: 100px; background-image: {star_svg}; background-repeat: no-repeat; opacity: 0.6; pointer-events: none; }}
         [data-testid="stAppViewContainer"]::after {{ content: ""; position: fixed; bottom: 50px; right: 10px; width: 100px; height: 100px; background-image: {star_svg}; background-repeat: no-repeat; transform: rotate(20deg); opacity: 0.6; pointer-events: none; }}
+        
         h1, h2, h3, p, div, label, span, [data-testid="stMarkdownContainer"] p {{
             color: {c['text']} !important;
-            text-shadow: 1.5px 1.5px 0 {outline}, -1.5px -1.5px 0 {outline}, -1.5px 1.5px 0 {outline}, 1.5px -1.5px 0 {outline}, 4px 4px 0px {c['shadow']} !important;
+            /* ぷるぷる白フチCSS */
+            text-shadow: 2px 2px 0 {outline}, -2px -2px 0 {outline}, -2px 2px 0 {outline}, 2px -2px 0 {outline}, 4px 4px 0px {c['shadow']} !important;
             letter-spacing: 1px; font-weight: 900 !important;
         }}
-        h1 {{ font-size: 3.5rem !important; transform: rotate(-3deg); margin-bottom: 20px !important; -webkit-text-stroke: 2px {outline}; }}
+        h1 {{ font-size: 3.5rem !important; transform: rotate(-3deg); margin-bottom: 20px !important; }}
         .stRadio label p {{ font-size: 1.2rem !important; }}
         .custom-box {{ border: 3px dashed {c['border']}; background: rgba(255,255,255,0.95); border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 8px 8px 0px rgba(0,0,0,0.1); }}
         .stButton > button {{
@@ -146,27 +142,48 @@ def get_gal_caption(image, theme_mode, custom_text):
         return response.text.strip()
     except: return random.choice(THEME_CONFIG[theme_mode]["words"])
 
-# --- 7. 画像加工 (生存戦略版) ---
+# --- 7. 画像加工 (★ぷるぷるジェル文字実装★) ---
+def draw_gel_text(canvas, text, font, x, y, text_color, outline_color, gloss_alpha):
+    draw = ImageDraw.Draw(canvas)
+    
+    # 1. 太いフチ (Outline)
+    # 少しずつずらして描くことで、より太く丸いフチを作る
+    stroke_w = 8
+    draw.text((x, y), text, font=font, fill=outline_color, stroke_width=stroke_w, stroke_fill=outline_color)
+    
+    # 2. 本体 (Main Body)
+    draw.text((x, y), text, font=font, fill=text_color)
+    
+    # 3. ツヤ (Gloss Highlight)
+    # これが「ぷるぷる」の正体！文字の上半分に白い半透明を乗せる
+    
+    # 文字のサイズを取得
+    bbox = draw.textbbox((x, y), text, font=font)
+    w = bbox[2] - bbox[0]
+    h = bbox[3] - bbox[1]
+    
+    # 文字の形のマスクを作る
+    mask = Image.new('L', canvas.size, 0)
+    d_mask = ImageDraw.Draw(mask)
+    d_mask.text((x, y), text, font=font, fill=255)
+    
+    # ツヤ用の白いレイヤーを作る
+    gloss = Image.new('RGBA', canvas.size, (255, 255, 255, 0))
+    d_gloss = ImageDraw.Draw(gloss)
+    
+    # 上半分だけ白く塗る（少し楕円っぽく）
+    gloss_h = int(h * 0.45) # 上45%
+    d_gloss.rectangle([bbox[0], bbox[1] + 5, bbox[2], bbox[1] + gloss_h], fill=(255, 255, 255, gloss_alpha))
+    
+    # マスクを使って文字の部分だけツヤを残す
+    canvas.paste(gloss, (0,0), mask)
+
 def process_image(image, caption, theme_mode):
     c = THEME_CONFIG[theme_mode]["colors"]
     img = image.convert("RGB"); img = ImageEnhance.Brightness(img).enhance(1.15)
     w, h = img.size; canvas = Image.new("RGBA", (w, h), (255, 255, 255, 0))
     
-    # 1. 顔検出 (使える場合のみ実行)
-    face_boxes = []
-    if CAN_USE_FACE:
-        try:
-            mp_face = mp.solutions.face_detection
-            with mp_face.FaceDetection(model_selection=1, min_detection_confidence=0.5) as detection:
-                results = detection.process(np.array(img))
-                if results.detections:
-                    for d in results.detections:
-                        bb = d.location_data.relative_bounding_box
-                        ih, iw, _ = np.array(img).shape; m = 20
-                        face_boxes.append((int(bb.xmin*iw)-m, int(bb.ymin*ih)-m, int((bb.xmin+bb.width)*iw)+m, int((bb.ymin+bb.height)*ih)+m))
-        except: pass # 顔検出に失敗しても止まらない
-
-    # 2. 背景
+    # 背景
     try:
         if CAN_REMOVE_BG and os.path.exists("assets/bgs"):
             from rembg import remove; fg = remove(img).convert("RGBA"); bgs = [f for f in os.listdir("assets/bgs") if not f.startswith('.')]
@@ -175,45 +192,40 @@ def process_image(image, caption, theme_mode):
         else: canvas.paste(img.convert("RGBA"), (0,0))
     except: canvas.paste(img.convert("RGBA"), (0,0))
     
-    # 3. スタンプ
+    # スタンプ
     if os.path.exists("assets/stamps"):
         stamps = [f for f in os.listdir("assets/stamps") if not f.startswith('.')]
         if stamps:
-            for _ in range(5):
+            for _ in range(6):
                 try:
                     s = Image.open(f"assets/stamps/{random.choice(stamps)}").convert("RGBA")
                     sz = random.randint(int(w/7), int(w/4)); s_res = s.resize((sz, sz))
-                    
-                    # 顔検出が有効なら避ける、ダメならランダム
-                    placed = False
-                    if CAN_USE_FACE and face_boxes:
-                        for _ in range(10):
-                            sx, sy = random.randint(0, w-sz), random.randint(0, h-sz); stamp_box = (sx, sy, sx+sz, sy+sz)
-                            if not any((stamp_box[0]<f[2] and stamp_box[2]>f[0] and stamp_box[1]<f[3] and stamp_box[3]>f[1]) for f in face_boxes):
-                                canvas.paste(s_res, (sx, sy), s_res); placed = True; break
-                    
-                    if not placed: # 顔検出できないor場所がない場合はそのまま貼る
-                        sx, sy = random.randint(0, w-sz), random.randint(0, h-sz)
-                        canvas.paste(s_res, (sx, sy), s_res)
+                    sx, sy = random.randint(0, w-sz), random.randint(0, h-sz)
+                    canvas.paste(s_res, (sx, sy), s_res)
                 except: pass
 
-    # 4. 文字入れ
+    # 文字配置計算
     draw = ImageDraw.Draw(canvas)
     font_size = int(min(w, h) / 8)
     try: font = ImageFont.truetype("gal_font.ttf", font_size)
     except: font = ImageFont.load_default()
 
-    # ランダム配置
-    bbox = draw.textbbox((0, 0), caption, font=font); text_w, text_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
-    margin = int(min(w, h) * 0.05)
-    positions = [(margin, margin), (w-text_w-margin, margin), (margin, h-text_h-margin), (w-text_w-margin, h-text_h-margin), ((w-text_w)/2, h-text_h-margin)]
-    base_x, base_y = random.choice(positions)
-    final_x = max(margin, min(base_x, w - text_w - margin))
-    final_y = max(margin, min(base_y, h - text_h - margin))
+    # はみ出し防止
+    margin = int(min(w, h) * 0.05); max_text_width = w - 2 * margin
+    while font_size > 10:
+        bbox = draw.textbbox((0, 0), caption, font=font)
+        if bbox[2] - bbox[0] <= max_text_width: break
+        font_size -= 2
+        try: font = ImageFont.truetype("gal_font.ttf", font_size)
+        except: break
 
-    tc = c['img_text']; sc = c['img_stroke']
-    draw.text((final_x, final_y), caption, font=font, fill=sc, stroke_width=10, stroke_fill=sc)
-    draw.text((final_x, final_y), caption, font=font, fill=tc)
+    bbox = draw.textbbox((0, 0), caption, font=font); text_w, text_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    positions = [(margin, margin), (w-text_w-margin, margin), (margin, h-text_h-margin), (w-text_w-margin, h-text_h-margin), ((w-text_w)/2, h-text_h-margin)]
+    bx, by = random.choice(positions)
+    fx, fy = max(margin, min(bx, w - text_w - margin)), max(margin, min(by, h - text_h - margin))
+
+    # ★新機能：ジェル文字を描画！★
+    draw_gel_text(canvas, caption, font, fx, fy, c['text'], c['outline'], c.get('gloss_alpha', 120))
     
     return canvas
 
@@ -233,8 +245,7 @@ with col1:
             loading_ph = st.empty(); msg = random.choice(THEME_CONFIG[st.session_state.theme]["loading"])
             loading_ph.markdown(f"""<div class="gal-loading"><div class="gal-loading-text">{msg}</div></div>""", unsafe_allow_html=True)
             time.sleep(3); caption = get_gal_caption(image, st.session_state.theme, custom_text)
-            # ★ここも修正：spinnerを使わず静かに処理する（エラー画面回避）
-            res = process_image(image, caption, st.session_state.theme)
+            with st.spinner('AIが加工中...'): res = process_image(image, caption, st.session_state.theme)
             loading_ph.empty(); st.session_state.final = res; st.session_state.cap = caption
 with col2:
     c = THEME_CONFIG[st.session_state.theme]["colors"]
