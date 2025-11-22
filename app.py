@@ -4,7 +4,6 @@ import os
 import random
 import google.generativeai as genai
 import time
-import mediapipe as mp
 import numpy as np
 
 # --- 1. 設定 ---
@@ -19,12 +18,20 @@ except:
 if GOOGLE_API_KEY.startswith("AIza"):
     genai.configure(api_key=GOOGLE_API_KEY)
 
-# --- 3. エラー回避 ---
+# --- 3. エラー回避 (ライブラリの生存確認) ---
+# 背景切り抜き
 try:
     from rembg import remove
     CAN_REMOVE_BG = True
 except:
     CAN_REMOVE_BG = False
+
+# ★顔認識 (ここを修正！なくても動くようにする) ★
+try:
+    import mediapipe as mp
+    CAN_USE_FACE = True
+except ImportError:
+    CAN_USE_FACE = False
 
 # --- 4. テーマ定義 ---
 THEME_CONFIG = {
@@ -83,7 +90,8 @@ THEME_CONFIG = {
 # --- 5. CSS注入 ---
 def inject_css(theme):
     c = THEME_CONFIG[theme]["colors"]
-    star_svg = f"""url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 50 50"><path d="M25 0 L30 18 L50 18 L35 30 L40 50 L25 38 L10 50 L15 30 L0 18 L20 18 Z" fill="none" stroke="{c['border'].replace("#", "%23")}" stroke-width="2" stroke-linejoin="round" /></svg>')"""
+    deco_color = c['deco'].replace("#", "%23") if 'deco' in c else c['border'].replace("#", "%23")
+    star_svg = f"""url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 50 50"><path d="M25 0 L30 18 L50 18 L35 30 L40 50 L25 38 L10 50 L15 30 L0 18 L20 18 Z" fill="none" stroke="{deco_color}" stroke-width="2" stroke-linejoin="round" /></svg>')"""
     outline = c['outline']
     st.markdown(f"""
     <style>
@@ -138,21 +146,25 @@ def get_gal_caption(image, theme_mode, custom_text):
         return response.text.strip()
     except: return random.choice(THEME_CONFIG[theme_mode]["words"])
 
-# --- 7. 画像加工 (顔避けスタンプ & ランダム配置文字) ---
+# --- 7. 画像加工 (生存戦略版) ---
 def process_image(image, caption, theme_mode):
     c = THEME_CONFIG[theme_mode]["colors"]
     img = image.convert("RGB"); img = ImageEnhance.Brightness(img).enhance(1.15)
     w, h = img.size; canvas = Image.new("RGBA", (w, h), (255, 255, 255, 0))
     
-    # 1. 顔検出
-    mp_face = mp.solutions.face_detection; faces = []
-    with mp_face.FaceDetection(model_selection=1, min_detection_confidence=0.5) as detection:
-        results = detection.process(np.array(img))
-        if results.detections:
-            for d in results.detections:
-                bb = d.location_data.relative_bounding_box
-                ih, iw, _ = np.array(img).shape; m = 20
-                faces.append((int(bb.xmin*iw)-m, int(bb.ymin*ih)-m, int((bb.xmin+bb.width)*iw)+m, int((bb.ymin+bb.height)*ih)+m))
+    # 1. 顔検出 (使える場合のみ実行)
+    face_boxes = []
+    if CAN_USE_FACE:
+        try:
+            mp_face = mp.solutions.face_detection
+            with mp_face.FaceDetection(model_selection=1, min_detection_confidence=0.5) as detection:
+                results = detection.process(np.array(img))
+                if results.detections:
+                    for d in results.detections:
+                        bb = d.location_data.relative_bounding_box
+                        ih, iw, _ = np.array(img).shape; m = 20
+                        face_boxes.append((int(bb.xmin*iw)-m, int(bb.ymin*ih)-m, int((bb.xmin+bb.width)*iw)+m, int((bb.ymin+bb.height)*ih)+m))
+        except: pass # 顔検出に失敗しても止まらない
 
     # 2. 背景
     try:
@@ -163,7 +175,7 @@ def process_image(image, caption, theme_mode):
         else: canvas.paste(img.convert("RGBA"), (0,0))
     except: canvas.paste(img.convert("RGBA"), (0,0))
     
-    # 3. スタンプ (顔避け)
+    # 3. スタンプ
     if os.path.exists("assets/stamps"):
         stamps = [f for f in os.listdir("assets/stamps") if not f.startswith('.')]
         if stamps:
@@ -171,45 +183,37 @@ def process_image(image, caption, theme_mode):
                 try:
                     s = Image.open(f"assets/stamps/{random.choice(stamps)}").convert("RGBA")
                     sz = random.randint(int(w/7), int(w/4)); s_res = s.resize((sz, sz))
-                    for _ in range(10):
-                        sx, sy = random.randint(0, w-sz), random.randint(0, h-sz); stamp_box = (sx, sy, sx+sz, sy+sz)
-                        if not any((stamp_box[0]<f[2] and stamp_box[2]>f[0] and stamp_box[1]<f[3] and stamp_box[3]>f[1]) for f in faces):
-                            canvas.paste(s_res, (sx, sy), s_res); break
+                    
+                    # 顔検出が有効なら避ける、ダメならランダム
+                    placed = False
+                    if CAN_USE_FACE and face_boxes:
+                        for _ in range(10):
+                            sx, sy = random.randint(0, w-sz), random.randint(0, h-sz); stamp_box = (sx, sy, sx+sz, sy+sz)
+                            if not any((stamp_box[0]<f[2] and stamp_box[2]>f[0] and stamp_box[1]<f[3] and stamp_box[3]>f[1]) for f in face_boxes):
+                                canvas.paste(s_res, (sx, sy), s_res); placed = True; break
+                    
+                    if not placed: # 顔検出できないor場所がない場合はそのまま貼る
+                        sx, sy = random.randint(0, w-sz), random.randint(0, h-sz)
+                        canvas.paste(s_res, (sx, sy), s_res)
                 except: pass
 
-    # 4. 文字入れ (ランダム配置 & はみ出し防止)
+    # 4. 文字入れ
     draw = ImageDraw.Draw(canvas)
-    # フォントサイズを画像の短辺を基準に調整 (大きすぎず小さすぎず)
     font_size = int(min(w, h) / 8)
     try: font = ImageFont.truetype("gal_font.ttf", font_size)
     except: font = ImageFont.load_default()
 
-    # 文字のサイズを計算
-    bbox = draw.textbbox((0, 0), caption, font=font)
-    text_w, text_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
-    
-    # 画面端からのマージン(5%)
+    # ランダム配置
+    bbox = draw.textbbox((0, 0), caption, font=font); text_w, text_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
     margin = int(min(w, h) * 0.05)
-
-    # 配置候補エリア (左上, 右上, 左下, 右下, 中央下)
-    positions = [
-        (margin, margin), # 左上
-        (w - text_w - margin, margin), # 右上
-        (margin, h - text_h - margin), # 左下
-        (w - text_w - margin, h - text_h - margin), # 右下
-        ((w - text_w) / 2, h - text_h - margin) # 中央下
-    ]
-    # ランダムに選択
+    positions = [(margin, margin), (w-text_w-margin, margin), (margin, h-text_h-margin), (w-text_w-margin, h-text_h-margin), ((w-text_w)/2, h-text_h-margin)]
     base_x, base_y = random.choice(positions)
-
-    # 最終的なはみ出し防止 (絶対に画面内に収めるクランプ処理)
     final_x = max(margin, min(base_x, w - text_w - margin))
     final_y = max(margin, min(base_y, h - text_h - margin))
-    text_pos = (final_x, final_y)
 
     tc = c['img_text']; sc = c['img_stroke']
-    draw.text(text_pos, caption, font=font, fill=sc, stroke_width=10, stroke_fill=sc)
-    draw.text(text_pos, caption, font=font, fill=tc)
+    draw.text((final_x, final_y), caption, font=font, fill=sc, stroke_width=10, stroke_fill=sc)
+    draw.text((final_x, final_y), caption, font=font, fill=tc)
     
     return canvas
 
@@ -229,7 +233,8 @@ with col1:
             loading_ph = st.empty(); msg = random.choice(THEME_CONFIG[st.session_state.theme]["loading"])
             loading_ph.markdown(f"""<div class="gal-loading"><div class="gal-loading-text">{msg}</div></div>""", unsafe_allow_html=True)
             time.sleep(3); caption = get_gal_caption(image, st.session_state.theme, custom_text)
-            with st.spinner('AIが顔の位置を確認中...'): res = process_image(image, caption, st.session_state.theme)
+            # ★ここも修正：spinnerを使わず静かに処理する（エラー画面回避）
+            res = process_image(image, caption, st.session_state.theme)
             loading_ph.empty(); st.session_state.final = res; st.session_state.cap = caption
 with col2:
     c = THEME_CONFIG[st.session_state.theme]["colors"]
