@@ -24,12 +24,12 @@ try:
 except:
     CAN_REMOVE_BG = False
 
-# --- 4. テーマ定義 (フチの色「outline」を追加！) ---
+# --- 4. テーマ定義 ---
 THEME_CONFIG = {
     "姫ギャル (Pink)": {
         "colors": {
             "bg_base": "#fff0f5", "dot": "#ff69b4",
-            "text": "#ff007f", "outline": "#ffffff", # ピンク文字 × 白フチ
+            "text": "#ff007f", "outline": "#ff69b4", # ピンク文字 × ピンク影
             "border": "#ff69b4", "shadow": "#ffb6c1",
             "img_text": "#ff1493", "img_stroke": "white"
         },
@@ -39,7 +39,7 @@ THEME_CONFIG = {
     "強めギャル (High)": {
         "colors": {
             "bg_base": "#000000", "dot": "#333333",
-            "text": "#FFD700", "outline": "#000000", # ★ここ変更！ゴールド文字 × 黒フチ
+            "text": "#FFD700", "outline": "#000000", # ゴールド文字 × 黒影
             "border": "#FFD700", "shadow": "#FF0000",
             "img_text": "#FFD700", "img_stroke": "black"
         },
@@ -49,7 +49,7 @@ THEME_CONFIG = {
     "Y2K (Cyber)": {
         "colors": {
             "bg_base": "#e0ffff", "dot": "#0000ff",
-            "text": "#0000cc", "outline": "#ffffff", # 青文字 × 白フチ
+            "text": "#0000cc", "outline": "#0000ff", # 青文字 × 青影
             "border": "#0000ff", "shadow": "#00ffff",
             "img_text": "#00FFFF", "img_stroke": "#000080"
         },
@@ -59,7 +59,7 @@ THEME_CONFIG = {
     "病みかわ (Emo)": {
         "colors": {
             "bg_base": "#1a001a", "dot": "#800080",
-            "text": "#4b0082", "outline": "#ffffff", # 濃い紫 × 白フチ
+            "text": "#4b0082", "outline": "#800080", # 紫文字 × 紫影
             "border": "#9370db", "shadow": "#d8bfd8",
             "img_text": "#E6E6FA", "img_stroke": "black"
         },
@@ -69,7 +69,7 @@ THEME_CONFIG = {
     "自由入力": {
         "colors": {
             "bg_base": "#ffffff", "dot": "#cccccc",
-            "text": "#333333", "outline": "#ffffff",
+            "text": "#333333", "outline": "#333333",
             "border": "#333333", "shadow": "#000000",
             "img_text": "#FF00FF", "img_stroke": "white"
         },
@@ -78,14 +78,12 @@ THEME_CONFIG = {
     }
 }
 
-# --- 5. CSS注入 (フチの色を可変にする！) ---
+# --- 5. CSS注入 (最強の二重フチ！) ---
 def inject_css(theme):
     c = THEME_CONFIG[theme]["colors"]
     deco_color = c['deco'].replace("#", "%23") if 'deco' in c else c['border'].replace("#", "%23")
-    
     star_svg = f"""url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 50 50"><path d="M25 0 L30 18 L50 18 L35 30 L40 50 L25 38 L10 50 L15 30 L0 18 L20 18 Z" fill="none" stroke="{deco_color}" stroke-width="2" stroke-linejoin="round" /></svg>')"""
     
-    # フチの色を取り出す
     outline = c['outline']
     
     st.markdown(f"""
@@ -93,7 +91,6 @@ def inject_css(theme):
         @import url('https://fonts.googleapis.com/css2?family=Potta+One&display=swap');
         html, body, [class*="css"] {{ font-family: 'Potta One', sans-serif !important; }}
         
-        /* 背景 */
         [data-testid="stAppViewContainer"] {{
             background-color: #f8f9fa !important;
             background-image:
@@ -104,53 +101,54 @@ def inject_css(theme):
         [data-testid="stAppViewContainer"]::before {{ content: ""; position: fixed; top: 50px; left: 10px; width: 100px; height: 100px; background-image: {star_svg}; background-repeat: no-repeat; opacity: 0.6; pointer-events: none; }}
         [data-testid="stAppViewContainer"]::after {{ content: ""; position: fixed; bottom: 50px; right: 10px; width: 100px; height: 100px; background-image: {star_svg}; background-repeat: no-repeat; transform: rotate(20deg); opacity: 0.6; pointer-events: none; }}
         
-        /* 文字色・フチ・影 */
+        /* ★ここが最終奥義！二重フチ★ */
         h1, h2, h3, p, div, label, span, [data-testid="stMarkdownContainer"] p {{
             color: {c['text']} !important;
-            /* ★フチの色を theme ごとに変更！ */
             text-shadow:
-                2px 2px 0 {outline}, -1px -1px 0 {outline}, 1px -1px 0 {outline}, -1px 1px 0 {outline}, 1px 1px 0 {outline},
-                4px 4px 0px {c['shadow']} !important;
+                /* 内側の白フチ (2px) */
+                0 0 2px #fff, 0 0 2px #fff, 0 0 2px #fff, 0 0 2px #fff,
+                /* 外側のカラーフチ/影 (4px) */
+                3px 3px 0 {outline}, -3px -3px 0 {outline}, 3px -3px 0 {outline}, -3px 3px 0 {outline},
+                /* さらに外側の影 */
+                6px 6px 0px {c['shadow']} !important;
             letter-spacing: 1px;
+            font-weight: 900 !important; /* 文字を太く */
         }}
         
-        h1 {{ font-size: 3.5rem !important; transform: rotate(-3deg); margin-bottom: 20px !important; }}
-        .stRadio label p {{ font-size: 1.1rem !important; }}
+        h1 {{ font-size: 3.5rem !important; transform: rotate(-3deg); margin-bottom: 20px !important; -webkit-text-stroke: 2px {outline}; }}
+        .stRadio label p {{ font-size: 1.2rem !important; }}
         
-        /* コンテナ */
         .custom-box {{
-            border: 3px dashed {c['border']};
+            border: 4px dashed {c['border']};
             background: rgba(255,255,255,0.95);
             border-radius: 15px; padding: 20px; margin-bottom: 20px;
             box-shadow: 8px 8px 0px rgba(0,0,0,0.1);
         }}
         
-        /* ボタン */
         .stButton > button {{
             background: linear-gradient(180deg, #ffffff 0%, {c['shadow']} 100%) !important;
             background-color: white !important;
             color: {c['text']} !important;
-            border: 3px solid {c['text']} !important;
+            border: 4px solid {c['text']} !important;
             border-radius: 50px !important;
-            box-shadow: 0 6px 0 {c['text']} !important;
-            font-size: 1.3rem !important;
+            box-shadow: 0 6px 0 {c['text']}, 0 0 10px {c['shadow']} !important;
+            font-size: 1.4rem !important;
             transition: all 0.1s;
+            font-weight: bold;
         }}
         .stButton > button:active {{ transform: translateY(4px); box-shadow: 0 2px 0 {c['text']} !important; }}
 
-        /* マーキー */
         .marquee-container {{
             position: fixed; top: 0; left: 0; width: 100%; background: {c['border']};
             z-index: 9999; overflow: hidden; white-space: nowrap; padding: 8px 0; font-size: 16px;
-            border-bottom: 2px solid white;
+            border-bottom: 3px solid white;
         }}
-        .marquee-content {{ display: inline-block; animation: marquee 15s linear infinite; color: white !important; text-shadow: none !important; font-weight: bold; }}
+        .marquee-content {{ display: inline-block; animation: marquee 15s linear infinite; color: white !important; text-shadow: 2px 2px 0 #000 !important; font-weight: bold; }}
         @keyframes marquee {{ 0% {{ transform: translateX(100%); }} 100% {{ transform: translateX(-100%); }} }}
 
-        /* ローディング */
         @keyframes rainbow {{ 0% {{ background-color: #ff9a9e; }} 50% {{ background-color: #a18cd1; }} 100% {{ background-color: #ff9a9e; }} }}
         .gal-loading {{ position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 999999; display: flex; flex-direction: column; justify-content: center; align-items: center; animation: rainbow 2s linear infinite; }}
-        .gal-loading-text {{ font-size: 3rem; font-weight: 900; color: white !important; text-shadow: 4px 4px 0 #000 !important; animation: shake 0.5s infinite; }}
+        .gal-loading-text {{ font-size: 3rem; font-weight: 900; color: white !important; text-shadow: 4px 4px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000 !important; animation: shake 0.5s infinite; }}
         @keyframes shake {{ 0% {{ transform: rotate(0deg); }} 25% {{ transform: rotate(5deg); }} 75% {{ transform: rotate(-5deg); }} 100% {{ transform: rotate(0deg); }} }}
     </style>
     <div class="marquee-container"><div class="marquee-content">Welcome to Gal-M@ker ... Powered by Love Loop Inc ... HEISEI RETRO STYLE ... Make it KAWAII ... {theme} MODE ... 🌺🦋💖</div></div>
