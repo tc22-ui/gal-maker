@@ -1,6 +1,7 @@
 streamlit
 Pillow
 google-generativeai
-rembg[gpu]
+rembg
 watchdog
 mediapipe
+numpy
